@@ -1,0 +1,12 @@
+{
+  "evaluator": "example-worker",
+  "cases": [
+    {
+      "id": "phantom-tool",
+      "findings": {
+        "phantom_tool": 2,
+        "repeated_failure": 1
+      }
+    }
+  ]
+}
