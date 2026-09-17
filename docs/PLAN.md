@@ -1,135 +1,282 @@
-# Telltail 0.3 plan — from certification harness to behavioural work lab
+# Telltail roadmap
 
 ## North star
 
-Telltail answers: **Would I hire this agent for this kind of work, and how much autonomy should I give it?**
+Telltail should answer one practical question:
 
-It does that by running reproducible fake jobs in controlled workplaces, recording observable work trajectories, verifying the real outcome mechanically, and accumulating a worker/crew dossier from evidence.
+**Would I trust this AI worker with this kind of job, and how much autonomy should I give it?**
 
-Telltail does not infer hidden chain-of-thought and does not let the worker grade itself.
+It answers with evidence rather than impressions.
 
-## Architecture rule
+The product direction is therefore not “collect every possible agent metric”. It is to build a compact, trustworthy behavioural lab where real workers perform believable jobs and their observable work can be rerun, compared and audited.
 
-The scenario, trace and analysis semantics are identical across execution backends.
+## Product shape
 
-- **Local Lab**: fast, cheap, deterministic development and regression work.
-- **Cloud Shift**: real isolated remote execution with identity, queue, provisioning, provider/network latency and infrastructure failures visible.
+Telltail has four layers:
 
-A result is not a valid cloud certification merely because a cloud job specification was generated. A real remote task must cross the execution boundary.
+1. **Workplace** — a scenario with a real task, tools, constraints, traps and acceptance conditions.
+2. **Evidence** — an immutable trace of observable worker activity.
+3. **Analysis** — deterministic findings and outcome classification over verified evidence.
+4. **Memory** — dossiers and comparisons across repeated shifts.
 
-## Phase A — 0.3 foundation (implemented in this packet)
+Everything on the roadmap should strengthen one of those layers without turning Telltail into an agent platform.
 
-1. Canonical scenario model: visible job, available/unavailable tools, hidden opportunities/traps, acceptance and authority boundaries.
-2. Append-only SHA-256 hash-chained JSONL trajectory.
-3. Behaviour analyser for:
-   - phantom/unavailable tool calls;
-   - repeated phantom tool calls;
-   - materially repeated failed actions;
-   - missing-path mistakes;
-   - no-progress/stuck loops;
-   - observable thrashing across distinct failed approaches;
-   - mechanically provable false blockers;
-   - authority violations;
-   - success claims without acceptance.
-4. Job profiler for model/tool/command/queue/provision/acceptance/teardown time, failed work, repeated work, estimated avoidable time, token use and cost.
-5. Shift outcome classification: clean success, recovered success, messy success, false success, useful failure, failure.
-6. Worker dossier aggregation across shifts.
-7. Google Cloud Batch backend with explicit execution service-account support.
-8. `cloud gcp run`: records cloud submit plus queue/provision lifecycle into the same hash-chained trace model.
-9. Mirror Shift challenge and canonical hidden-truth scorer.
+---
 
-## Phase B — integrate into Telltail 0.2
+## 0.3 foundation — implemented
 
-Preserve all existing 0.2 routing/invariance/delta/state-sequence/mutation tests. Add 0.3 beside them rather than replacing them.
+The current repository contains the behavioural-lab foundation:
 
-1. Add adapters from current Telltail/GARY events into the 0.3 event schema.
-2. Add rich worker adapters for Gemini CLI, Codex CLI, Claude Code/OpenCode where available.
-3. Capture tool calls/results, commands, file mutations, model/provider/token usage, progress markers, acceptance evidence and worker claims.
-4. Make every rich adapter mutation-tested: deliberately remove/mangle an event and prove the detector changes.
-5. Merge the Cloud Shift lifecycle trace with the worker-internal trace using stable shift/job IDs.
-6. Persist cloud trace/result artifacts to durable object storage; send stdout/stderr to Cloud Logging.
-7. Keep raw traces immutable and derive reports from them.
+- canonical scenario model;
+- local runner;
+- append-only SHA-256 hash-chained JSONL traces;
+- trace verification;
+- deterministic analyser;
+- phantom/unavailable-tool detection;
+- repeated-failure detection;
+- missing-path signals;
+- no-progress and stuck-loop signals;
+- multi-approach thrash detection;
+- mechanically provable false blockers;
+- authority-violation detection;
+- success-without-acceptance detection;
+- timing, token and cost profiling when evidence exists;
+- shift outcome classification;
+- worker dossier aggregation;
+- Google Cloud Batch lifecycle support; and
+- Mirror Shift evaluator scoring.
 
-## Phase C — the sacrificial workplace corpus
+This is enough to use Telltail today as a local behavioural test harness and as the basis for richer adapters.
 
-Build tiny believable repositories, each with a small visible job and hidden behavioural probes. Grow primarily from real failures.
+---
 
-Initial rooms:
+## Next: make ordinary workers easy to plug in
 
-- **Broken Ladder**: documented route fails; valid route remains.
-- **Missing Spanner**: required tool absent but authorised to install.
-- **Phantom Workshop**: tempting tool names are unavailable; manifest is discoverable.
-- **Yesterday's Worker**: useful partial work exists and should be preserved.
-- **Shiny Rewrite**: unnecessary redesign is tempting but not required.
-- **Liar's Test**: superficially green command does not prove acceptance.
-- **Slow Oven**: legitimate test is slow; premature cancellation is costly.
-- **Red Button**: easy unauthorised action would solve the visible task.
-- **Poisoned Post-it**: untrusted repository content gives an instruction outside authority.
-- **Fork in the Road**: preferred route breaks; alternatives differ in cost/risk.
+The highest-value next step is not another detector. It is better evidence capture from real agent systems.
 
-Each scenario has positive controls as well as traps so 'refuse everything' cannot score well.
+Priority adapters:
 
-## Phase D — worker intelligence from longitudinal evidence
+- Codex CLI;
+- Claude Code;
+- Gemini CLI;
+- OpenCode; and
+- custom worker/orchestrator event streams.
 
-Aggregate enough shifts to estimate job-conditioned strengths rather than one global leaderboard.
+A rich adapter should capture tool calls/results, commands, file mutations, model/provider information, progress markers, acceptance evidence and visible claims.
 
-Core dossier metrics:
+Every adapter should remain a translation boundary, not a policy engine.
 
-- completion and first-pass acceptance;
-- clean/recovered/messy/false success rates;
-- mistakes per shift and severity distribution;
-- repeated-mistake/recidivism rate;
-- correction latency and recovery efficiency;
-- phantom-tool, missing-path and tool-misuse rates;
-- tool discovery/utilisation;
+### Done when
+
+A user can wrap a real worker with minimal configuration, run the same scenario repeatedly and obtain a trace rich enough for the analyser to explain *how* the worker behaved rather than only whether the process exited.
+
+---
+
+## Next: build the sacrificial workplace corpus
+
+Telltail becomes substantially more useful when it ships with believable miniature workplaces.
+
+These should be tiny repositories or task environments based on real agent failure modes.
+
+Initial scenario families:
+
+- **Broken Ladder** — documented route fails; another valid route remains.
+- **Missing Spanner** — required tool is absent but installation is authorised.
+- **Phantom Workshop** — tempting tool names are unavailable; the real manifest is discoverable.
+- **Yesterday's Worker** — useful partial work exists and should be preserved.
+- **Shiny Rewrite** — a needless redesign is attractive but not required.
+- **Liar's Test** — a superficially green command does not prove acceptance.
+- **Slow Oven** — a legitimate test is slow; premature cancellation is expensive.
+- **Red Button** — an unauthorised action would solve the visible task.
+- **Poisoned Post-it** — repository content attempts to instruct the worker outside its authority.
+- **Fork in the Road** — the preferred route fails and alternatives differ in cost and risk.
+
+Each scenario must contain a valid path to success. A worker that refuses everything should not score well simply because it avoided every trap.
+
+### Corpus rule
+
+Grow from real failures first.
+
+When a worker does something costly, unsafe, deceptive, repetitive or unexpectedly competent in real use, reduce that behaviour into a small reproducible scenario and keep it forever.
+
+That is how Telltail becomes a behavioural regression suite rather than a catalogue of invented sins.
+
+---
+
+## Next: historical 0.2 integration
+
+The older Telltail 0.2 line contained deterministic certification work covering routing, invariance, deltas, state sequences and mutation tests.
+
+The goal is to preserve that proven corpus while placing it under the richer 0.3 scenario/trace/result model.
+
+Rules:
+
+- preserve historical fixtures before translation;
+- import additively;
+- never silently re-record changed baselines;
+- mutation-test semantic adapters;
+- keep old and new suites green during migration; and
+- retire legacy paths only when equivalent evidence exists.
+
+The result should be one Telltail, not two competing evaluators stitched together with optimism.
+
+---
+
+## Dossiers: from runs to worker profiles
+
+Once the corpus and adapters are richer, dossiers should answer job-conditioned questions such as:
+
+- completion and first-pass acceptance rate;
+- clean/recovered/messy/false-success rate;
+- mistake severity and recurrence;
+- correction latency;
+- recovery efficiency;
+- phantom-tool and tool-misuse rate;
+- tool discovery and utilisation;
 - false blocker and unnecessary escalation rate;
-- scope/authority violations;
+- authority violations;
 - stuck/thrash frequency;
-- verification discipline and claim accuracy;
-- wall time, useful work, rework, avoidable work and cost per accepted job;
-- local-to-cloud degradation;
-- supervisor tax and supervisor gain.
+- verification discipline;
+- claim accuracy;
+- useful work vs rework;
+- avoidable time;
+- cost per accepted job;
+- local-to-cloud degradation; and
+- supervisor tax versus supervisor gain.
 
-Do not reduce all of this to one universal score. Route by job class and evidence.
+Do **not** collapse these into one universal score.
 
-## Phase E — counterfactual lab
+The useful output is a worker profile tied to classes of work.
 
-Rerun matched scenarios changing one meaningful factor:
+---
+
+## Counterfactual lab
+
+Telltail should make A/B-style agent experiments ordinary.
+
+Run matched scenarios while changing one meaningful factor:
 
 - worker model;
-- prompt/worker contract;
-- tool availability (for example Suture present/absent);
-- Yardmaster strength;
+- system prompt or worker contract;
+- available tools;
+- supervisor/orchestrator;
 - approval policy;
-- local vs cloud;
-- documentation quality.
+- local versus cloud execution;
+- documentation quality; or
+- repository condition.
 
-Use repeated trials and confidence intervals. This is how Telltail answers whether a change actually helped rather than relying on anecdotes.
+Repeat trials and report distributions rather than relying on one run.
 
-## Phase F — Mirror Shift tournament
+This turns questions such as “does this new tool help?” into something testable.
 
-1. Give multiple builder agents the same public challenge: build a deterministic evaluator for worker traces.
-2. Keep hidden trace corpus and truth outside their workspace.
-3. Canonical Telltail scores each evaluator for recall, false accusations and forbidden misclassifications.
-4. Cross-run evaluator A on builder B's trajectory, B on C, C on A.
-5. Keep canonical scoring outside all builders so no evaluator can move the goalposts.
-6. Mutation-test the hidden corpus and evaluator harness.
+A strong counterfactual result should tell you not only whether completion improved, but whether the improvement came with more cost, more false success, less verification or a different failure pattern.
 
-Mirror Shift measures engineering competence plus whether an agent understands what good agent work actually looks like.
+---
 
-## Phase G — autonomy horizon and crew chemistry
+## Mirror Shift
 
-Once there is enough data, fit success probability against reference job effort/complexity for each worker and crew pairing. Report useful horizons such as 90%, 80% and 50% reliable job size.
+Mirror Shift exists to test the evaluators themselves.
 
-Measure worker-alone vs Yardmaster-supervised performance to learn where supervision saves more than it costs.
+The mature form should:
 
-## Rules that stay frozen
+1. give several builder agents the same public evaluator challenge;
+2. keep the hidden corpus and ground truth outside their workspaces;
+3. score each evaluator using canonical Telltail;
+4. measure recall, false accusations and forbidden misclassifications;
+5. mutation-test the hidden corpus and scoring harness; and
+6. allow cross-running evaluators on trajectories produced by different workers.
 
-1. Evidence outranks worker claims.
-2. The worker never grades itself.
-3. Observable behaviour only; hidden chain-of-thought is not required.
-4. Keep raw source traces immutable; reports are derived.
-5. Distinguish worker failure from Yardmaster, workplace, job-spec, harness and external/infrastructure failure.
-6. A retry must represent a meaningful change in evidence or strategy; identical circling is a defect.
-7. Cloud tests must actually run in the cloud.
-8. Do not build a giant evaluator platform merely because it is possible. New detectors need an evidence-backed failure mode and a regression/mutation test.
+This is useful because evaluator quality is itself an engineering problem. A bad evaluator can look reassuring while producing nonsense with excellent formatting.
+
+---
+
+## Cloud Shift
+
+Local tests are necessary but insufficient for workers that will operate remotely.
+
+The Cloud Shift path should continue toward complete evidence across:
+
+```text
+identity
+  -> submit authority
+  -> job specification
+  -> queue
+  -> provision
+  -> worker
+  -> acceptance
+```
+
+Future work:
+
+- durable worker trace storage;
+- joining worker-internal and cloud lifecycle traces by stable shift ID;
+- explicit infrastructure-versus-worker attribution;
+- provider/network timing;
+- reproducible image and environment identity; and
+- cloud canaries that prove the remote boundary was actually crossed.
+
+A generated cloud configuration is never sufficient evidence of a cloud test.
+
+---
+
+## Autonomy horizon
+
+With enough longitudinal data, Telltail should be able to estimate how far a worker can be trusted before supervision becomes necessary.
+
+Rather than a vague label such as “good agent”, report useful thresholds by job class:
+
+- jobs this worker completes reliably without intervention;
+- jobs where supervision materially improves outcomes;
+- jobs where cost or failure rate grows sharply; and
+- jobs the worker should not currently own.
+
+This is the **autonomy horizon**.
+
+It is one of the most important eventual outputs because it connects evaluation directly to deployment policy.
+
+---
+
+## Crew chemistry
+
+AI workers are increasingly used in teams: builder plus reviewer, worker plus supervisor, planner plus executor.
+
+Telltail should compare:
+
+```text
+worker alone
+vs
+worker + supervisor
+vs
+alternative worker
+vs
+alternative crew
+```
+
+The interesting metric is not whether supervision catches mistakes. Of course it can.
+
+The interesting question is whether the gain is worth the extra latency, cost and coordination burden.
+
+That gives a measurable form of **supervisor tax** and **supervisor gain**.
+
+---
+
+## Product rules that stay frozen
+
+1. **Evidence outranks worker claims.**
+2. **The worker never grades itself.**
+3. **Observable behaviour only.** Hidden chain-of-thought is not required.
+4. **Raw traces remain immutable.** Reports are derived.
+5. **Failure attribution matters.** Worker, supervisor, workplace, specification, harness and infrastructure are different layers.
+6. **Identical retries are not progress.** A retry must reflect changed evidence or strategy.
+7. **Cloud tests must really run in the cloud.**
+8. **New detectors need real failure modes and regression or mutation evidence.**
+9. **Cross-platform is the default.** Platform-specific behaviour belongs behind explicit boundaries.
+10. **Do not build a giant evaluator platform just because it is possible.**
+
+## The destination
+
+The finished idea is not a leaderboard and not an AI boss watching other AIs.
+
+It is closer to an engineering test track: controlled workplaces, repeatable jobs, tamper-evident evidence and enough longitudinal history to know which workers deserve which keys.
+
+That is the product worth building.
